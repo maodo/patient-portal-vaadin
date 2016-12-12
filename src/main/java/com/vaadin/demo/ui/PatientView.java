@@ -5,9 +5,14 @@ import com.vaadin.demo.repositories.PatientRepository;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.spring.annotation.SpringComponent;
 import com.vaadin.spring.annotation.UIScope;
-import com.vaadin.ui.*;
-import com.vaadin.ui.renderers.ButtonRenderer;
-import com.vaadin.ui.themes.ValoTheme;
+import com.vaadin.ui.Alignment;
+import com.vaadin.ui.Button;
+import com.vaadin.ui.VerticalLayout;
+import org.vaadin.viritin.button.DeleteButton;
+import org.vaadin.viritin.button.MButton;
+import org.vaadin.viritin.fields.MTable;
+import org.vaadin.viritin.layouts.MHorizontalLayout;
+import org.vaadin.viritin.layouts.MVerticalLayout;
 
 import javax.annotation.PostConstruct;
 
@@ -23,7 +28,7 @@ public class PatientView extends MainView {
     private final PatientRepository repo;
     private final PatientDetails patientDetails;
 
-    private Grid<Patient> patients;
+    private MTable<Patient> patients;
     private Button newPatientBtn;
 
 
@@ -34,23 +39,16 @@ public class PatientView extends MainView {
 
     @PostConstruct
     void init() {
-        patients = new Grid<>();
-        patients.setSizeFull();
-        patients.addColumn("Name", patient->patient.getFirstName() + " " + patient.getLastName());
-        patients.addColumn("Id", patient->patient.getId().toString());
-        patients.addColumn("Medical record", patient->patient.getMedicalRecord().toString());
-        patients.addColumn("Doctor", patient->patient.getDoctor().getFirstName() + " " + patient.getDoctor().getLastName());
-        patients.addColumn("Last visit", patient-> {return  (patient.getLastVisit() == null) ? "" : patient.getLastVisit().toString();});
-        
-        // TODO how the hell should I create to buttons, other with "DANGER" + confirm dialog, in one column, for real
+        patients = new MTable<>(Patient.class)
+        .withProperties("name","id", "medicalRecord", "doctor", "lastVisit")
+                .withGeneratedColumn("name", p->p.toString())
+                .withGeneratedColumn("", p -> {
+                    Button edit = new MButton(FontAwesome.PENCIL, e->focusPatient(p));
+                    Button cancel = new DeleteButton(FontAwesome.TRASH, "", "Are you sure you want to delete the patient?", e->deletePatient(p));
+                    return new MHorizontalLayout(edit, cancel);
+                });
 
-        ButtonRenderer<Patient> br = new ButtonRenderer<>( e -> {
-            Patient p = e.getItem();
-            focusPatient(p);
-        });
-        patients.addColumn(p->"editBtn", br).setCaption("");
-        patients.addColumn(p->"delete", new ButtonRenderer<>(e->deletePatient(e.getItem()))).setCaption("");
-        listPatients();
+        patients.setSizeFull();
 
         newPatientBtn = new Button("Add patient");
         newPatientBtn.setIcon(FontAwesome.PLUS);
@@ -60,21 +58,14 @@ public class PatientView extends MainView {
             patientDetails.edit();
         });
 
-        VerticalLayout layout = new VerticalLayout();
-        layout.setSpacing(true);
-        layout.setMargin(true);
-        layout.addComponents(newPatientBtn, patients);
-        layout.setComponentAlignment(newPatientBtn, Alignment.TOP_RIGHT);
-        layout.setExpandRatio(patients, 1);
-        
-        layout.setSizeFull();
-        
-        addComponent(layout);
-        
+        add(newPatientBtn).setComponentAlignment(newPatientBtn, Alignment.TOP_RIGHT);
+        expand(patients);
+
+        listPatients();
     }
 
     public void listPatients() {
-        patients.setItems(repo.findAll());
+        patients.setRows(repo.findAll());
     }
 
     private void focusPatient(Patient p) {
@@ -82,35 +73,8 @@ public class PatientView extends MainView {
     }
 
     private void deletePatient(Patient patient) {
-        Window window = new Window();
-        window.setCaption("Are you sure?");
-        window.setClosable(false);
-        window.setResizable(false);
-        window.setModal(true);
-        Label label = new Label("You are about to delete patient details of " + patient + ".");
-
-        Button delete = new Button("Delete");
-        delete.setStyleName(ValoTheme.BUTTON_DANGER);
-        delete.addClickListener(e-> {
-            repo.delete(patient);
-            window.close();
-        });
-
-        Button cancel = new Button("Cancel");
-        cancel.addClickListener(e-> {
-            window.close();
-        });
-        HorizontalLayout actions = new HorizontalLayout(cancel, delete);
-        actions.setSpacing(true);
-
-        VerticalLayout layout = new VerticalLayout(label, actions);
-        layout.setMargin(true);
-        layout.setSpacing(true);
-
-        window.setContent(layout);
-
-        getUI().addWindow(window);
-
+        repo.delete(patient);
+        listPatients();
     }
 
 }

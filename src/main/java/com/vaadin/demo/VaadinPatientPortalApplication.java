@@ -15,7 +15,7 @@ public class VaadinPatientPortalApplication {
 
 	@Bean
 	CommandLineRunner init(DBInitService s) {
-		return (String... strings) -> {
+		return (String[] str) -> {
 			s.initDatabase();
 		};
 	}

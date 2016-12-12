@@ -4,6 +4,7 @@ import com.vaadin.demo.entities.JournalEntry;
 import com.vaadin.demo.entities.Patient;
 import com.vaadin.demo.repositories.PatientRepository;
 import com.vaadin.demo.service.PatientService;
+import com.vaadin.event.SelectionEvent;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.spring.annotation.SpringComponent;
 import com.vaadin.spring.annotation.UIScope;
@@ -12,8 +13,12 @@ import com.vaadin.ui.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import com.vaadin.ui.renderers.TextRenderer;
 import com.vaadin.ui.themes.ValoTheme;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.vaadin.viritin.fields.MTable;
+import org.vaadin.viritin.grid.MGrid;
+import org.vaadin.viritin.label.MLabel;
 
 /**
  * Created by mstahv
@@ -38,7 +43,7 @@ public class PatientDetails extends SubView {
     JournalEntryForm journalEntryForm;
 
     Button editBtn = new Button("EDIT");
-    Button addBtn = new Button("ADD");
+    Button addJournalBtn = new Button("ADD");
     Button back = new Button("ALL PATIENTS", FontAwesome.ARROW_LEFT);
     private Patient patient;
 
@@ -54,11 +59,11 @@ public class PatientDetails extends SubView {
         addTab(journal);
 
         editBtn.addClickListener(e -> edit());
-        addBtn.addClickListener(e -> addJournal());
+        addJournalBtn.addClickListener(e -> addJournal());
         setTopRightComponent(editBtn);
         getTabsheet().addSelectedTabChangeListener(e -> {
             if (e.getTabSheet().getSelectedTab() == journal) {
-                setTopRightComponent(addBtn);
+                setTopRightComponent(addJournalBtn);
             } else {
                 setTopRightComponent(editBtn);
             }
@@ -75,6 +80,8 @@ public class PatientDetails extends SubView {
             p = patientService.findAttached(p); // fetch with joins to history etc
         }
         patient = p;
+
+        addJournalBtn.setEnabled(p.isPersistent());
 
         profile.removeAllComponents();
 
@@ -106,37 +113,39 @@ public class PatientDetails extends SubView {
 
         journal.removeAllComponents();
 
-        Grid<JournalEntry> journalEntryGrid = new Grid<>();
-        journalEntryGrid.setCaption(patient.toString());
-        journalEntryGrid.addColumn("Date", j -> SimpleDateFormat.getDateInstance().format(j.getDate()));
-        journalEntryGrid.addColumn("Appointment", j -> j.getAppointmentType().toString());
-        journalEntryGrid.addColumn("Doctor", j -> j.getDoctor().toString());
-        journalEntryGrid.addColumn("Notes", JournalEntry::getEntry).setWidth(200); // TODO how to set expand ratio + overflow or set relative width??
-        journalEntryGrid.setDetailsGenerator(j -> {
-            Label l = new Label(j.getEntry());
-            l.setWidth("100%");
-            l.setCaption("NOTES");
-            VerticalLayout vl = new VerticalLayout(l);
-            vl.setMargin(true);
-            return vl;
+
+        MGrid<JournalEntry> grid = new MGrid<>(JournalEntry.class)
+                .withGeneratedColumn("date2", j -> SimpleDateFormat.getDateInstance().format(j.getDate()))
+                .withProperties("date2", "appointmentType", "doctor", "entry")
+                .setRows(patient.getJournalEntries())
+                .withFullWidth();
+        grid.getColumn("entry").setWidth(200);
+
+        grid.setDetailsGenerator(new Grid.DetailsGenerator() {
+            @Override
+            public Component getDetails(Grid.RowReference rowReference) {
+                JournalEntry je = (JournalEntry) rowReference.getItemId();
+                return new MLabel(je.getEntry());
+            }
         });
 
-        journalEntryGrid.addItemClickListener(e -> {
-            journalEntryGrid.setDetailsVisible(e.getItem(), !journalEntryGrid.isDetailsVisible(e.getItem()));
+        grid.addSelectionListener(e -> {
+            if(!e.getRemoved().isEmpty()) {
+                grid.setDetailsVisible(e.getRemoved().iterator().next(), false);
+            }
+            if(!e.getAdded().isEmpty()) {
+                grid.setDetailsVisible(grid.getSelectedRow(), true);
+            }
         });
 
-        journalEntryGrid.setItems(patient.getJournalEntries());
+        journal.addComponent(grid);
 
-        journalEntryGrid.setWidth(100, Unit.PERCENTAGE);
-        journal.addComponent(journalEntryGrid);
 
         show();
     }
 
     private Label label(String caption, Object value) {
-        Label l = new Label(value == null ? "" : value.toString());
-        l.setCaption(caption);
-        return l;
+        return new MLabel(value == null ? "" : value.toString()).withCaption(caption);
     }
 
     private void addJournal() {
