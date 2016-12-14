@@ -8,6 +8,7 @@ import com.vaadin.spring.annotation.UIScope;
 import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.VerticalLayout;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.vaadin.viritin.button.DeleteButton;
 import org.vaadin.viritin.button.MButton;
 import org.vaadin.viritin.fields.MTable;
@@ -29,16 +30,35 @@ public class PatientView extends MainView {
     private final PatientDetails patientDetails;
 
     private MTable<Patient> patients;
+    private MobilePatientListing mobilePatientListing;
+
     private Button newPatientBtn;
 
 
-    public PatientView(PatientRepository repository, PatientDetails patientDetails) {
+    public PatientView(PatientRepository repository, PatientDetails patientDetails, MobilePatientListing mobilePatientListing) {
         this.repo = repository;
         this.patientDetails = patientDetails;
+        this.mobilePatientListing = mobilePatientListing;
     }
 
-    @PostConstruct
-    void init() {
+    @Override
+    public void attach() {
+        super.attach();
+        if(VaadinUI.getLayoutMode() == LayoutMode.DESKTOP) {
+            buildDesktopView();
+        } else {
+            buildMobileView();
+        }
+
+        listPatients();
+    }
+
+    private void buildMobileView() {
+        add(mobilePatientListing);
+        listPatients();
+    }
+
+    private void buildDesktopView() {
         patients = new MTable<>(Patient.class)
         .withProperties("name","id", "medicalRecord", "doctor", "lastVisit")
                 .withGeneratedColumn("name", p->p.toString())
@@ -60,15 +80,17 @@ public class PatientView extends MainView {
 
         add(newPatientBtn).setComponentAlignment(newPatientBtn, Alignment.TOP_RIGHT);
         expand(patients);
-
-        listPatients();
     }
 
     public void listPatients() {
-        patients.setRows(repo.findAll());
+        if(VaadinUI.getLayoutMode() ==  LayoutMode.DESKTOP) {
+            patients.setRows(repo.findAll());
+        } else  {
+            mobilePatientListing.list();
+        }
     }
 
-    private void focusPatient(Patient p) {
+    void focusPatient(Patient p) {
         patientDetails.showPatient(p);
     }
 

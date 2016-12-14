@@ -79,7 +79,7 @@ public class VaadinUI extends UI {
         }
     }
 
-    public LayoutMode getLayoutMode() {
+    public static LayoutMode getLayoutMode() {
         int width = Page.getCurrent().getBrowserWindowWidth();
         if (width < 1024) {
             return LayoutMode.HANDHELD;

@@ -1,10 +1,6 @@
 package com.vaadin.demo.ui;
 
-import com.vaadin.ui.AbsoluteLayout;
-import com.vaadin.ui.Component;
-import com.vaadin.ui.CssLayout;
-import com.vaadin.ui.TabSheet;
-import com.vaadin.ui.UI;
+import com.vaadin.ui.*;
 import com.vaadin.ui.themes.ValoTheme;
 
 /**
@@ -37,6 +33,7 @@ public abstract class SubView extends AbsoluteLayout {
     }
 
     public void setTopRightComponent(Component c) {
+        configureButton(c);
         if(topRightComponent != null) {
             removeComponent(topRightComponent);
         }
@@ -44,7 +41,15 @@ public abstract class SubView extends AbsoluteLayout {
         topRightComponent = c;
     }
 
+    private void configureButton(Component c) {
+        if (c instanceof Button) {
+            Button button = (Button) c;
+            button.setStyleName(ValoTheme.BUTTON_BORDERLESS);
+        }
+    }
+
     public void setTopLeftComponent(Component c) {
+        configureButton(c);
         addComponent(c, "top:0;left:0");
     }
 
